@@ -64,12 +64,12 @@ if st.button("PROCESSAR FOTOS", type="primary") and fotos_upload and moldura_upl
                     img_final.paste(img_cortada.convert("RGBA"), (0, 0))
                     img_final.paste(moldura_hd, (0, 0), mask=moldura_hd)
 
-                    # Converte para arquivo PNG de alta qualidade
+                    # Converte para arquivo JPEG de alta qualidade
                     img_byte_arr = io.BytesIO()
-                    img_final.save(img_byte_arr, format='PNG', compress_level=1)
+                    img_final.convert("RGB").save(img_byte_arr, format='JPEG', quality=100, subsampling=0)
                     
                     # Adiciona direto ao ZIP
-                    zf.writestr(f"foto_editada_{idx+1}.png", img_byte_arr.getvalue())
+                    zf.writestr(f"foto_editada_{idx+1}.jpg", img_byte_arr.getvalue())
 
             st.success("✅ Fotos processadas com sucesso!")
             
