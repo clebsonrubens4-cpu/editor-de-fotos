@@ -1,5 +1,5 @@
 import streamlit as st
-from PIL import Image
+from PIL import Image, ImageOps
 import io
 import zipfile
 
@@ -33,6 +33,10 @@ if st.button("PROCESSAR FOTOS", type="primary") and fotos_upload and moldura_upl
             with zipfile.ZipFile(buffer_zip, "w") as zf:
                 for idx, foto_file in enumerate(fotos_upload):
                     img = Image.open(foto_file)
+                    
+                    # --- CORREÇÃO AUTOMÁTICA DE ROTAÇÃO (EXIF) ---
+                    img = ImageOps.exif_transpose(img)
+
                     largura_f, altura_f = img.size
                     proporcao_f = largura_f / altura_f
 
