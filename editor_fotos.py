@@ -5,8 +5,8 @@ import zipfile
 
 st.set_page_config(page_title="Editor de Fotos HD", layout="centered")
 
-st.title("📸 Editor de Fotos e Molduras (Qualidade HD)")
-st.write("Corte automático mantendo a resolução e qualidade total da foto original.")
+st.title("📸 Editor de Fotos e Molduras (HD)")
+st.write("Corte automático mantendo a resolução total da foto original.")
 
 # 1. Upload das fotos
 fotos_upload = st.file_uploader(
@@ -22,15 +22,14 @@ moldura_upload = st.file_uploader(
 )
 
 if st.button("PROCESSAR FOTOS", type="primary") and fotos_upload and moldura_upload:
-    with st.spinner("Processando imagens em resolução original..."):
+    with st.spinner("Processando imagens em alta velocidade..."):
         try:
             moldura_orig = Image.open(moldura_upload).convert("RGBA")
             proporcao_m = moldura_orig.width / moldura_orig.height
 
             buffer_zip = io.BytesIO()
-            fotos_processadas = []
 
-            with zipfile.ZipFile(buffer_zip, "w") as zf:
+            with zipfile.ZipFile(buffer_zip, "w", zipfile.ZIP_DEFLATED) as zf:
                 for idx, foto_file in enumerate(fotos_upload):
                     img = Image.open(foto_file)
                     
@@ -56,8 +55,7 @@ if st.button("PROCESSAR FOTOS", type="primary") and fotos_upload and moldura_upl
 
                     img_cortada = img.crop((left, top, right, bottom))
                     
-                    # Ajusta a MOLDURA ao tamanho da FOTO CORTADA (e não o contrário)
-                    # Isso garante que a foto NÃO perca megapixels!
+                    # Ajusta a Moldura ao tamanho da Foto Cortada (mantém resolução)
                     largura_corte, altura_corte = img_cortada.size
                     moldura_hd = moldura_orig.resize((largura_corte, altura_corte), Image.Resampling.LANCZOS)
 
@@ -66,38 +64,22 @@ if st.button("PROCESSAR FOTOS", type="primary") and fotos_upload and moldura_upl
                     img_final.paste(img_cortada.convert("RGBA"), (0, 0))
                     img_final.paste(moldura_hd, (0, 0), mask=moldura_hd)
 
-                    # Salva em PNG de altíssima qualidade sem compressão destrutiva
+                    # Converte para arquivo PNG de alta qualidade
                     img_byte_arr = io.BytesIO()
                     img_final.save(img_byte_arr, format='PNG', compress_level=1)
                     
-                    conteudo_bytes = img_byte_arr.getvalue()
-                    nome_arquivo = f"foto_editada_{idx+1}.png"
-                    
-                    zf.writestr(nome_arquivo, conteudo_bytes)
-                    fotos_processadas.append((nome_arquivo, conteudo_bytes, img_final))
+                    # Adiciona direto ao ZIP
+                    zf.writestr(f"foto_editada_{idx+1}.png", img_byte_arr.getvalue())
 
-            st.success("✅ Fotos processadas em Alta Definição!")
+            st.success("✅ Fotos processadas com sucesso!")
             
-            # Botão para baixar tudo em ZIP
+            # Botão único de Download
             st.download_button(
                 label="⬇️ Baixar TODAS as fotos (.ZIP)",
                 data=buffer_zip.getvalue(),
                 file_name="fotos_editadas_HD.zip",
                 mime="application/zip"
             )
-
-            st.write("---")
-            st.subheader("🖼️ Ou baixe individualmente:")
-            
-            # Exibe prévia e botão de download individual de cada foto
-            for nome, b_data, img_obj in fotos_processadas:
-                st.image(img_obj, caption=nome, use_container_width=True)
-                st.download_button(
-                    label=f"Baixar {nome}",
-                    data=b_data,
-                    file_name=nome,
-                    mime="image/png"
-                )
 
         except Exception as e:
             st.error(f"Erro ao processar as imagens: {e}")
