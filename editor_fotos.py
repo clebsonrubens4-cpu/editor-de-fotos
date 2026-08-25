@@ -1,57 +1,76 @@
-import os
+import streamlit as st
 from PIL import Image
+import io
+import zipfile
 
-def processar_fotos(pasta_entrada, pasta_saida, caminho_moldura):
-    # Cria a pasta de saída se ela não existir
-    if not os.path.exists(pasta_saida):
-        os.makedirs(pasta_saida)
+st.set_page_config(page_title="Editor de Fotos", layout="centered")
 
-    # Carrega a moldura e garante que está no formato RGBA (com transparência)
-    moldura = Image.open(caminho_moldura).convert("RGBA")
-    largura_moldura, altura_moldura = moldura.size
+st.title("📸 Editor de Fotos e Molduras")
+st.write("Corte automático centralizado e aplicação de moldura em lote.")
 
-    # Formatos de imagem aceitos
-    extensoes_validas = ('.jpg', '.jpeg', '.png', '.bmp', '.webp')
+# 1. Upload das fotos
+fotos_upload = st.file_uploader(
+    "1. Selecione as fotos (que serão cortadas no centro)", 
+    type=['jpg', 'jpeg', 'png', 'webp'], 
+    accept_multiple_files=True
+)
 
-    # Percorre todas as fotos da pasta de entrada
-    for arquivo in os.listdir(pasta_entrada):
-        if arquivo.lower().endswith(extensoes_validas):
-            caminho_imagem = os.path.join(pasta_entrada, arquivo)
-            
-            with Image.open(caminho_imagem) as img:
-                # 1. Cortar a foto no formato quadrado (1:1) do Instagram
-                largura, altura = img.size
-                tamanho_corte = min(largura, altura)
+# 2. Upload da moldura
+moldura_upload = st.file_uploader(
+    "2. Selecione a moldura (PNG transparente)", 
+    type=['png']
+)
 
-                left = (largura - tamanho_corte) / 2
-                top = (altura - tamanho_corte) / 2
-                right = (largura + tamanho_corte) / 2
-                bottom = (altura + tamanho_corte) / 2
+if st.button("PROCESSAR FOTOS", type="primary") and fotos_upload and moldura_upload:
+    with st.spinner("Processando imagens..."):
+        try:
+            moldura = Image.open(moldura_upload).convert("RGBA")
+            largura_m, altura_m = moldura.size
+            proporcao_m = largura_m / altura_m
 
-                # Executa o corte centralizado
-                img_cortada = img.crop((left, top, right, bottom))
+            buffer_zip = io.BytesIO()
 
-                # Redimensiona a foto cortada para bater com o tamanho da moldura
-                img_redimensionada = img_cortada.resize((largura_moldura, altura_moldura), Image.Resampling.LANCZOS)
-                
-                # Converte para RGBA para permitir a sobreposição da moldura
-                img_final = img_redimensionada.convert("RGBA")
+            with zipfile.ZipFile(buffer_zip, "w") as zf:
+                for idx, foto_file in enumerate(fotos_upload):
+                    img = Image.open(foto_file)
+                    largura_f, altura_f = img.size
+                    proporcao_f = largura_f / altura_f
 
-                # 2. Aplicar a moldura
-                # O parâmetro 'mask=moldura' usa o canal alfa (transparência) da moldura
-                img_final.paste(moldura, (0, 0), mask=moldura)
+                    # Corte Centralizado proporcional à moldura
+                    if proporcao_f > proporcao_m:
+                        nova_largura = int(altura_f * proporcao_m)
+                        left = (largura_f - nova_largura) // 2
+                        top = 0
+                        right = left + nova_largura
+                        bottom = altura_f
+                    else:
+                        nova_altura = int(largura_f / proporcao_m)
+                        top = (altura_f - nova_altura) // 2
+                        left = 0
+                        right = largura_f
+                        bottom = top + nova_altura
 
-                # Salva o resultado final em JPG (ou PNG) na pasta de saída
-                caminho_salvar = os.path.join(pasta_saida, f"editada_{os.path.splitext(arquivo)[0]}.jpg")
-                img_final.convert("RGB").save(caminho_salvar, "JPEG", quality=95)
-                
-                print(f"Processada: {arquivo}")
+                    img_cortada = img.crop((left, top, right, bottom))
+                    img_redimensionada = img_cortada.resize((largura_m, altura_m), Image.Resampling.LANCZOS)
 
-# --- CONFIGURAÇÃO E EXECUÇÃO ---
-# Coloque o caminho das suas pastas e da sua moldura aqui:
-PASTA_ENTRADA = "fotos_originais"
-PASTA_SAIDA = "fotos_prontas"
-MOLDURA = "moldura.png"
+                    # Sobreposição da Moldura
+                    img_final = Image.new("RGBA", (largura_m, altura_m))
+                    img_final.paste(img_redimensionada, (0, 0))
+                    img_final.paste(moldura, (0, 0), mask=moldura)
 
-# Executa o script
-processar_fotos(PASTA_ENTRADA, PASTA_SAIDA, MOLDURA)
+                    # Salva no arquivo ZIP em alta qualidade
+                    img_byte_arr = io.BytesIO()
+                    img_final.save(img_byte_arr, format='PNG')
+                    zf.writestr(f"foto_editada_{idx+1}.png", img_byte_arr.getvalue())
+
+            st.success("✅ Fotos processadas com sucesso!")
+            st.download_button(
+                label="⬇️ Baixar todas as fotos (.ZIP)",
+                data=buffer_zip.getvalue(),
+                file_name="fotos_editadas.zip",
+                mime="application/zip"
+            )
+        except Exception as e:
+            st.error(f"Erro ao processar as imagens: {e}")
+elif not fotos_upload or not moldura_upload:
+    st.info("Por favor, anexe as fotos e a moldura acima antes de clicar em processar.")
