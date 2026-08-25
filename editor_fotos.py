@@ -3,7 +3,12 @@ from PIL import Image, ImageOps
 import io
 import zipfile
 
-st.set_page_config(page_title="Editor de Fotos HD", layout="centered")
+# Configuração da página (DEVE ser a PRIMEIRA instrução do Streamlit)
+st.set_page_config(
+    page_title="Editor de Fotos HD",
+    page_icon="📸",
+    layout="centered"
+)
 
 st.title("📸 Editor de Fotos e Molduras (HD)")
 st.write("Corte automático mantendo a resolução total da foto original.")
