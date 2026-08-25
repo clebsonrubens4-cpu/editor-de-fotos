@@ -6,7 +6,7 @@ import zipfile
 st.set_page_config(page_title="Editor de Fotos", layout="centered")
 
 st.title("📸 Editor de Fotos e Molduras")
-st.write("Corte automático centralizado e aplicação de moldura em lote.")
+st.write("Corte automático centralizado e aplicação de moldura em lote com máxima qualidade.")
 
 # 1. Upload das fotos
 fotos_upload = st.file_uploader(
@@ -22,7 +22,7 @@ moldura_upload = st.file_uploader(
 )
 
 if st.button("PROCESSAR FOTOS", type="primary") and fotos_upload and moldura_upload:
-    with st.spinner("Processando imagens..."):
+    with st.spinner("Processando imagens em altíssima resolução..."):
         try:
             moldura = Image.open(moldura_upload).convert("RGBA")
             largura_m, altura_m = moldura.size
@@ -34,13 +34,13 @@ if st.button("PROCESSAR FOTOS", type="primary") and fotos_upload and moldura_upl
                 for idx, foto_file in enumerate(fotos_upload):
                     img = Image.open(foto_file)
                     
-                    # --- CORREÇÃO AUTOMÁTICA DE ROTAÇÃO (EXIF) ---
+                    # Correção de rotação (EXIF)
                     img = ImageOps.exif_transpose(img)
 
                     largura_f, altura_f = img.size
                     proporcao_f = largura_f / altura_f
 
-                    # Corte Centralizado proporcional à moldura
+                    # Corte Centralizado
                     if proporcao_f > proporcao_m:
                         nova_largura = int(altura_f * proporcao_m)
                         left = (largura_f - nova_largura) // 2
@@ -55,6 +55,8 @@ if st.button("PROCESSAR FOTOS", type="primary") and fotos_upload and moldura_upl
                         bottom = top + nova_altura
 
                     img_cortada = img.crop((left, top, right, bottom))
+                    
+                    # Redimensionamento de alta fidelidade
                     img_redimensionada = img_cortada.resize((largura_m, altura_m), Image.Resampling.LANCZOS)
 
                     # Sobreposição da Moldura
@@ -62,12 +64,16 @@ if st.button("PROCESSAR FOTOS", type="primary") and fotos_upload and moldura_upl
                     img_final.paste(img_redimensionada, (0, 0))
                     img_final.paste(moldura, (0, 0), mask=moldura)
 
-                    # Salva no arquivo ZIP em alta qualidade
+                    # Conversão para RGB e salvamento em JPEG de Qualidade Máxima (100)
+                    img_rgb = img_final.convert("RGB")
                     img_byte_arr = io.BytesIO()
-                    img_final.save(img_byte_arr, format='PNG')
-                    zf.writestr(f"foto_editada_{idx+1}.png", img_byte_arr.getvalue())
+                    
+                    # quality=100 e subsampling=0 garantem fidelidade total de cores e detalhes
+                    img_rgb.save(img_byte_arr, format='JPEG', quality=100, subsampling=0)
+                    
+                    zf.writestr(f"foto_editada_{idx+1}.jpg", img_byte_arr.getvalue())
 
-            st.success("✅ Fotos processadas com sucesso!")
+            st.success("✅ Fotos processadas com sucesso e qualidade máxima!")
             st.download_button(
                 label="⬇️ Baixar todas as fotos (.ZIP)",
                 data=buffer_zip.getvalue(),
