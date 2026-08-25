@@ -69,7 +69,7 @@ if st.button("PROCESSAR FOTOS", type="primary") and fotos_upload and moldura_upl
                     img_final.convert("RGB").save(img_byte_arr, format='JPEG', quality=100, subsampling=0)
                     
                     # Adiciona direto ao ZIP
-                    zf.writestr(f"foto_editada_{idx+1}.jpg", img_byte_arr.getvalue())
+                    zf.writestr(f"foto_editada_{idx+1}.jpeg", img_byte_arr.getvalue())
 
             st.success("✅ Fotos processadas com sucesso!")
             
